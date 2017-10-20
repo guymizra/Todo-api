@@ -14,59 +14,52 @@ app.get('/', function(req, res) {
 	res.send('Todo API root');
 });
 
+// GET /todos?completed=false&q=work
 app.get('/todos', function(req, res) {
-	var queryParams = req.query;
-	var filtredTodos = todos;
+	var query = req.query;
+	var where = {};
 
-	if (queryParams.hasOwnProperty('completed') && queryParams.completed === 'true') {
-		filtredTodos = _.where(filtredTodos, {
-			completed: true
-		});
-	} else if (queryParams.hasOwnProperty('completed') && queryParams.completed === 'false') {
-		filtredTodos = _.where(filtredTodos, {
-			completed: false
-		});
+	if (query.hasOwnProperty('completed') && query.completed === 'true') {
+		where.completed = true;
+	} else if (query.hasOwnProperty('completed') && query.completed === 'false') {
+		where.completed = false;
 	}
 
-	if (queryParams.hasOwnProperty('q') && queryParams.q.length > 0) {
-		filtredTodos = _.filter(filtredTodos, function(todo) {
-			return todo.description.toLowerCase().indexOf(queryParams.q.toLowerCase()) > -1;
-		});
+	if (query.hasOwnProperty('q') && query.q.length > 0) {
+		where.description = {
+			$like: '%' + query.q + '%'
+		};
 	}
 
-	res.json(filtredTodos);
+	db.todo.findAll({
+		where: where
+	}).then(function(todos) {
+		res.json(todos);
+	}).catch(function(e) {
+		res.status(500).json(e);
+	});
 });
 
 app.get('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
-	db.todo.findById(todoId).then(function(todo){
-		if (!!todo){
+	db.todo.findById(todoId).then(function(todo) {
+		if (!!todo) {
 			res.json(todo.toJSON());
 		} else {
 			res.status(404).send();
 		}
-	}).catch(function(e){
+	}).catch(function(e) {
 		res.status(500).json(e);
 	});
-
-	// var matchedTodo = _.findWhere(todos, {
-	// 	id: todoId
-	// });
-
-	// if (matchedTodo) {
-	// 	res.json(matchedTodo);
-	// } else {
-	// 	res.status(404).send();
-	// }
 });
 
 // POST /todos
 app.post('/todos', function(req, res) {
 	var body = _.pick(req.body, 'description', 'completed');
 
-	db.todo.create(body).then(function(todo){
+	db.todo.create(body).then(function(todo) {
 		res.status(200).json(todo.toJSON());
-	}).catch(function(e){
+	}).catch(function(e) {
 		res.status(400).json(e);
 	});
 });
